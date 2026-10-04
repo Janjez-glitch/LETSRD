@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="dark">
+    <title>LETSRD Ebook Media Studio</title>
+    <style>
+        :root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #10151e; color: #e8edf5; }
+        * { box-sizing: border-box; }
+        body { margin: 0; padding: 32px 18px 60px; }
+        main { max-width: 820px; margin: 0 auto; }
+        h1 { margin-bottom: 8px; font-size: clamp(1.8rem, 5vw, 2.5rem); }
+        .intro { margin: 0 0 26px; color: #aab6c8; }
+        .card { margin: 18px 0; padding: 22px; border: 1px solid #293548; border-radius: 14px; background: #192230; box-shadow: 0 10px 30px #0003; }
+        h2 { margin: 0 0 18px; font-size: 1.2rem; }
+        label { display: block; margin: 14px 0 6px; color: #c4cedd; font-size: .92rem; }
+        input, select, button { width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid #3a4a61; border-radius: 7px; background: #111a27; color: #f5f7fa; font: inherit; }
+        input[type=file] { padding: 8px; }
+        button { margin-top: 12px; border: 0; background: #147bd1; cursor: pointer; font-weight: 700; }
+        button:hover { background: #0969b7; }
+        button:disabled { cursor: wait; opacity: .65; }
+        .hint, .status { color: #aab6c8; font-size: .88rem; line-height: 1.5; }
+        .status { min-height: 1.5em; margin: 12px 0 0; }
+        .results { display: grid; gap: 10px; margin-top: 12px; }
+        .book { padding: 13px; border: 1px solid #2b394d; border-radius: 8px; background: #121b28; }
+        .book-title { margin: 0 0 4px; font-weight: 700; }
+        .book-meta { margin: 0; color: #aab6c8; font-size: .88rem; }
+        .book a { color: #78baff; }
+        .book button { min-height: 36px; padding: 7px 10px; }
+        .tier-free { color: #f5c56b; }
+        .tier-premium { color: #83dfa2; }
+        @media (min-width: 620px) { .fields { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; } }
+    </style>
+</head>
+<body>
+<main>
+    <h1>📚 LETSRD Ebook Media Studio</h1>
+    <p class="intro">Find a free ebook, then turn your PDF lesson into localized audio or an instructional video.</p>
+
+    <section class="card" aria-labelledby="search-heading">
+        <h2 id="search-heading">1. Search free ebook catalogs</h2>
+        <form id="searchForm">
+            <label for="searchQuery">Book title or author</label>
+            <input type="search" id="searchQuery" maxlength="200" required placeholder="e.g. The Time Machine">
+            <button id="searchButton" type="submit">Search Gutenberg and Open Library</button>
+        </form>
+        <p class="status" id="searchStatus" role="status" aria-live="polite"></p>
+        <div class="results" id="searchResults"></div>
+    </section>
+
+    <section class="card" aria-labelledby="trending-heading">
+        <h2 id="trending-heading">🔥 Top picks selected by most people</h2>
+        <p class="status" id="trendingStatus" role="status" aria-live="polite">Loading trending items…</p>
+        <div class="results" id="trendingBox"></div>
+    </section>
+
+    <section class="card" aria-labelledby="media-heading">
+        <h2 id="media-heading">2. Convert a PDF into learning media</h2>
+        <form id="mediaForm">
+            <label for="file">Source PDF</label>
+            <input type="file" id="file" name="file" accept="application/pdf,.pdf" required>
+            <input type="hidden" id="ebookId" name="ebook_id" value="uploaded-pdf">
+            <input type="hidden" id="bookTitle" value="">
+            <input type="hidden" id="bookAuthor" value="">
+            <div class="fields">
+                <div>
+                    <label for="tier">Account tier</label>
+                    <select id="tier" name="account_tier">
+                        <option value="free">Free</option>
+                        <option value="premium">Premium (development override)</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="format">Output format</label>
+                    <select id="format" name="format">
+                        <option value="mp3">MP3 audio</option>
+                        <option value="mp4">MP4 instructional slides (Premium)</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="language">Narration language</label>
+                    <select id="language" name="language">
+                        <option value="en">English</option>
+                        <option value="sw">Swahili</option>
+                        <option value="fr">French</option>
+                        <option value="es">Spanish</option>
+                        <option value="de">German</option>
+                        <option value="ja">Japanese (Premium)</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="music">Optional background music (Premium)</label>
+                    <input type="file" id="music" name="background_music" accept="audio/*" disabled>
+                </div>
+            </div>
+            <p class="hint tier-free" id="tierHint">Free: up to 5 PDF pages, MP3 only, and English, Swahili, French, Spanish, or German.</p>
+            <button id="generateButton" type="submit">Generate and download</button>
+        </form>
+        <p class="status" id="generationStatus" role="status" aria-live="polite"></p>
+    </section>
+</main>
+
+<script>
+    const searchForm = document.getElementById("searchForm");
+    const searchButton = document.getElementById("searchButton");
+    const searchStatus = document.getElementById("searchStatus");
+    const searchResults = document.getElementById("searchResults");
+    const mediaForm = document.getElementById("mediaForm");
+    const generateButton = document.getElementById("generateButton");
+    const generationStatus = document.getElementById("generationStatus");
+    const trendingStatus = document.getElementById("trendingStatus");
+    const trendingBox = document.getElementById("trendingBox");
+
+    async function loadTrendingBooks() {
+        trendingStatus.textContent = "Loading trending items…";
+        trendingBox.replaceChildren();
+        try {
+            const response = await fetch("/api/v1/analytics/trending");
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.detail || "Trending analytics unavailable.");
+            if (!data.trending || data.trending.length === 0) {
+                trendingStatus.textContent = "No processing metrics recorded yet. Convert a file to start the trend!";
+                return;
+            }
+            trendingStatus.textContent = "";
+            for (const item of data.trending) {
+                const row = document.createElement("article");
+                row.className = "book";
+                const title = document.createElement("p");
+                title.className = "book-title";
+                title.textContent = item.title;
+                const author = document.createElement("p");
+                author.className = "book-meta";
+                author.textContent = `by ${item.author || "Unknown"}`;
+                const plays = document.createElement("p");
+                plays.className = "book-meta";
+                plays.textContent = `🎧 ${item.conversion_count} plays`;
+                row.append(title, author, plays);
+                trendingBox.append(row);
+            }
+        } catch (error) {
+            trendingStatus.textContent = "Failed to synchronize trending analytics.";
+        }
+    }
+    window.addEventListener("DOMContentLoaded", loadTrendingBooks);
+
+    searchForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const query = document.getElementById("searchQuery").value.trim();
+        if (!query) return;
+        searchButton.disabled = true;
+        searchStatus.textContent = "Searching public ebook catalogs…";
+        searchResults.replaceChildren();
+        try {
+            const response = await fetch(`/api/v1/ebooks/search?query=${encodeURIComponent(query)}`);
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.detail || "Ebook search failed.");
+            if (!data.results.length) {
+                searchStatus.textContent = "No matching open catalog books found.";
+                return;
+            }
+            searchStatus.textContent = `${data.count} book(s) found.`;
+            for (const book of data.results) {
+                const card = document.createElement("article");
+                card.className = "book";
+                const title = document.createElement("p");
+                title.className = "book-title";
+                title.textContent = book.title || "Untitled";
+                const meta = document.createElement("p");
+                meta.className = "book-meta";
+                meta.textContent = `${(book.authors || []).join(", ") || "Unknown author"} · ${book.source}`;
+                card.append(title, meta);
+                const formats = book.formats || {};
+                const downloadUrl = formats["text/plain; charset=utf-8"] || formats["text/plain"] || formats.catalog;
+                if (downloadUrl && /^https:\/\//i.test(downloadUrl)) {
+                    const link = document.createElement("a");
+                    link.href = downloadUrl;
+                    link.target = "_blank";
+                    link.rel = "noopener noreferrer";
+                    link.textContent = "Open book";
+                    card.append(link);
+                }
+                const select = document.createElement("button");
+                select.type = "button";
+                select.textContent = "Use this book ID with my PDF";
+                select.addEventListener("click", () => {
+                    document.getElementById("ebookId").value = String(book.id || "uploaded-pdf");
+                    document.getElementById("bookTitle").value = book.title || "";
+                    document.getElementById("bookAuthor").value = (book.authors || []).join(", ");
+                    generationStatus.textContent = `Selected catalog entry: ${book.title || book.id}. Upload its PDF to generate media.`;
+                });
+                card.append(select);
+                searchResults.append(card);
+            }
+        } catch (error) {
+            searchStatus.textContent = error.message || "Could not connect to ebook search.";
+        } finally {
+            searchButton.disabled = false;
+        }
+    });
+
+    document.getElementById("tier").addEventListener("change", (event) => {
+        const premium = event.target.value === "premium";
+        const hint = document.getElementById("tierHint");
+        document.getElementById("music").disabled = !premium;
+        hint.className = `hint ${premium ? "tier-premium" : "tier-free"}`;
+        hint.textContent = premium
+            ? "Premium development override: unlimited pages, MP4, all supported narration languages, and optional background music."
+            : "Free: up to 5 PDF pages, MP3 only, and English, Swahili, French, Spanish, or German.";
+    });
+
+    mediaForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const file = document.getElementById("file").files[0];
+        if (!file) return;
+        const tier = document.getElementById("tier").value;
+        const format = document.getElementById("format").value;
+        if (tier === "free" && format === "mp4") {
+            generationStatus.textContent = "MP4 output requires Premium.";
+            return;
+        }
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("ebook_id", document.getElementById("ebookId").value);
+        formData.append("format", format);
+        formData.append("language", document.getElementById("language").value);
+        formData.append("account_tier", tier);
+        formData.append("book_title", document.getElementById("bookTitle").value);
+        formData.append("book_author", document.getElementById("bookAuthor").value);
+        const music = tier === "premium" ? document.getElementById("music").files[0] : null;
+        if (music) formData.append("background_music", music);
+
+        generateButton.disabled = true;
+        generationStatus.textContent = "Generating media. This may take a few minutes…";
+        try {
+            const response = await fetch("/api/v1/media/generate", { method: "POST", body: formData });
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.detail || "Media generation failed.");
+            }
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `${document.getElementById("ebookId").value || "letsrd-media"}.${format}`;
+            document.body.append(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(url);
+            generationStatus.textContent = "Your media download has started.";
+            await loadTrendingBooks();
+        } catch (error) {
+            generationStatus.textContent = error.message || "Could not connect to the media service.";
+        } finally {
+            generateButton.disabled = false;
+        }
+    });
+</script>
+</body>
+</html>

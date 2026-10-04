@@ -1,0 +1,22 @@
+{
+  "expo": {
+    "name": "LETSRD",
+    "slug": "letsrd",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "backgroundColor": "#F8F7F2"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.letsrd.study"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#12304A"
+      },
+      "package": "com.letsrd.study"
+    }
+  }
+}

@@ -1,0 +1,18 @@
+# Ignore local environment keys
+.env
+.env.local
+*.env
+
+# Python caching & virtual environments
+__pycache__/
+*.pyc
+venv/
+.venv/
+env/
+
+# Node/React Native dependencies & build outputs
+node_modules/
+.expo/
+dist/
+build/
+npm-debug.log*
