@@ -6,4 +6,5 @@ pypdf
 pillow
 python-multipart
 python-dotenv
+beautifulsoup4
 email-validator>=2.0.0
