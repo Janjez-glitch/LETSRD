@@ -13,12 +13,17 @@ import json
 import os
 import re
 import sqlite3
+import sys
 import tempfile
 from contextlib import closing
 from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any, BinaryIO, Literal
 from urllib.parse import urlencode, urlsplit
+
+_BACKEND_DIRECTORY = str(Path(__file__).resolve().parent)
+if _BACKEND_DIRECTORY not in sys.path:
+    sys.path.insert(0, _BACKEND_DIRECTORY)
 
 from fastapi import FastAPI, HTTPException, Query, File, Form, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
